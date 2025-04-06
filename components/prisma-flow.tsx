@@ -1,89 +1,77 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { FileUp, Play, X } from "lucide-react"
+import React, { useState } from "react";
+import { FileUp, Play, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/components/ui/use-toast"
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
 
-import { DiagramCanvas } from "./diagram-canvas"
-import { DiagramSettings } from "./diagram-settings"
-import { Navbar } from "./navbar"
+import DiagramCanvas from "./DiagramCanvas.client";
+import { DiagramSettings } from "./diagram-settings";
+import { Navbar } from "./navbar";
 
-const DEFAULT_SCHEMA = `model User {
-  id    Int     @id @default(autoincrement())
-  name  String
-  posts Post[]
-}
-
-model Post {
-  id       Int    @id @default(autoincrement())
-  title    String
-  author   User   @relation(fields: [authorId], references: [id])
-  authorId Int
-}`
+const DEFAULT_SCHEMA = `
+// ... your Prisma schema ...
+`;
 
 export default function PrismaFlow() {
-  const [schema, setSchema] = useState(DEFAULT_SCHEMA)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isGenerated, setIsGenerated] = useState(false)
-  const [view, setView] = useState<"3d" | "2d">("2d") // Default to 2D as requested
-  const [layout, setLayout] = useState<"flowchart" | "traditional">("flowchart")
-  const [spacing, setSpacing] = useState(100)
-  const { toast } = useToast()
+  const [schema, setSchema] = useState(DEFAULT_SCHEMA);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerated, setIsGenerated] = useState(false);
+  const [view, setView] = useState<"3d" | "2d">("2d");
+  const [layout, setLayout] = useState<"flowchart" | "traditional">("flowchart");
+  const [spacing, setSpacing] = useState(100);
+  const { toast } = useToast();
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
-        setSchema(event.target.result as string)
+        setSchema(event.target.result as string);
       }
-    }
-    reader.readAsText(file)
-  }
+    };
+    reader.readAsText(file);
+  };
 
   const handleGenerate = () => {
-    setIsGenerating(true)
+    setIsGenerating(true);
 
-    // Simulate processing time
     setTimeout(() => {
       if (schema.trim() === "") {
         toast({
           title: "Error",
           description: "Invalid schema, check syntax",
           variant: "destructive",
-        })
-        setIsGenerating(false)
-        return
+        });
+        setIsGenerating(false);
+        return;
       }
 
-      setIsGenerated(true)
-      setIsGenerating(false)
+      setIsGenerated(true);
+      setIsGenerating(false);
       toast({
         title: "Success",
         description: "Diagram generated!",
-      })
-    }, 1000)
-  }
+      });
+    }, 1000);
+  };
 
   const handleClear = () => {
-    setSchema("")
-    setIsGenerated(false)
-  }
+    setSchema("");
+    setIsGenerated(false);
+  };
 
   const handleExport = (format: "png" | "svg") => {
-    console.log(`Exporting as ${format}...`)
     toast({
       title: "Export",
       description: `Diagram exported as ${format.toUpperCase()}`,
-    })
-  }
+    });
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -152,24 +140,26 @@ export default function PrismaFlow() {
         <div className="w-full md:w-3/5 bg-[#121212] relative">
           <Tabs defaultValue="diagram" className="w-full">
             <TabsList className="w-full bg-[#1e1e1e] rounded-none border-b border-gray-800">
-              <TabsTrigger value="diagram" className="flex-1">
-                Diagram
-              </TabsTrigger>
-              <TabsTrigger value="code" className="flex-1">
-                Generated Code
-              </TabsTrigger>
+              <TabsTrigger value="diagram" className="flex-1">Diagram</TabsTrigger>
             </TabsList>
-            <TabsContent value="diagram" className="p-0 h-[calc(100vh-8rem)]">
-              <DiagramCanvas schema={schema} isGenerated={isGenerated} view={view} layout={layout} spacing={spacing} />
-            </TabsContent>
-            <TabsContent value="code" className="p-4 h-[calc(100vh-8rem)] overflow-auto">
-              <pre className="font-mono text-sm text-gray-300 whitespace-pre-wrap">
-                {isGenerated ? `// Generated ER Diagram code\n${schema}` : "Generate a diagram first to see the code."}
-              </pre>
+            <TabsContent value="diagram" className="h-[calc(100vh-4rem)]">
+              {isGenerated ? (
+                <DiagramCanvas
+                  schema={schema}
+                  isGenerated={isGenerated}
+                  view={view}
+                  layout={layout}
+                  spacing={spacing}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  Generate a diagram to view it here.
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
       </div>
     </div>
-  )
+  );
 }
