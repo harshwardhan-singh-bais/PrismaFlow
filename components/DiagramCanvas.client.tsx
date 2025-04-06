@@ -4,23 +4,26 @@ import React, { useEffect, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
-  Edge,
-  Node,
   MiniMap,
-  MarkerType,
   ReactFlowProvider,
+  Node,
+  Edge,
+  MarkerType,
 } from "reactflow";
-
+import dagre from "dagre";
 import "reactflow/dist/style.css";
 import { parsePrismaSchema } from "@/lib/parsePrismaSchema";
 
 type DiagramCanvasProps = {
   schema: string;
-  isGenerated: boolean;
-  view: "3d" | "2d";
-  layout: "flowchart" | "traditional";
-  spacing: number;
+  layout?: "flowchart" | "traditional";
+  spacing?: number;
+  view?: "2d" | "3d";
+  isGenerated?: boolean;
 };
+
+const nodeWidth = 250;
+const nodeHeight = 150;
 
 const DiagramCanvas = ({
   schema,
@@ -33,41 +36,46 @@ const DiagramCanvas = ({
   useEffect(() => {
     const { models, relations } = parsePrismaSchema(schema);
 
-    const nodeEntries = Object.entries(models);
-    const nodeList: Node[] = [];
+    const dagreGraph = new dagre.graphlib.Graph();
+    dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-    nodeEntries.forEach(([modelName, fields], i) => {
-      const x = layout === "flowchart" ? (i % 5) * spacing : 0;
-      const y = layout === "flowchart" ? Math.floor(i / 5) * spacing : i * spacing;
-
-      nodeList.push({
-        id: modelName,
-        type: "default",
-        position: { x, y },
-        data: {
-          label: (
-            <div>
-              <strong>{modelName}</strong>
-              <ul className="text-xs">
-                {fields.map((field, idx) => (
-                  <li key={idx}>{field}</li>
-                ))}
-              </ul>
-            </div>
-          ),
-        },
-        style: {
-          backgroundColor: "#1d4ed8",
-          color: "#fff",
-          borderRadius: 8,
-          padding: 10,
-          width: 200,
-        },
-      });
+    dagreGraph.setGraph({
+      rankdir: layout === "flowchart" ? "LR" : "TB",
+      nodesep: 50,
+      ranksep: spacing,
     });
 
-    const edgeList: Edge[] = relations.map((rel, i) => ({
-      id: `e-${i}`,
+    const createdNodes: Node[] = Object.entries(models).map(
+      ([modelName, fields]) => {
+        const nodeId = modelName;
+        dagreGraph.setNode(nodeId, { width: nodeWidth, height: nodeHeight });
+
+        return {
+          id: nodeId,
+          type: "default",
+          data: {
+            label: (
+              <div className="p-4 bg-purple-100 border border-purple-400 rounded-lg shadow-md">
+                <div className="font-bold text-purple-700 mb-2">{modelName}</div>
+                <table className="text-sm w-full">
+                  <tbody>
+                    {fields.map((field, idx) => (
+                      <tr key={idx} className="border-t border-purple-300">
+                        <td className="py-1 text-purple-800">{field}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ),
+          },
+          position: { x: 0, y: 0 },
+        };
+      }
+    );
+
+    const createdEdges: Edge[] = relations.map((rel, index) => ({
+      id: `e${index}`,
       source: rel.from,
       target: rel.to,
       label: rel.label,
@@ -78,19 +86,31 @@ const DiagramCanvas = ({
       },
     }));
 
-    setNodes(nodeList);
-    setEdges(edgeList);
+    createdEdges.forEach((edge) => {
+      dagreGraph.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(dagreGraph);
+
+    const positionedNodes = createdNodes.map((node) => {
+      const { x, y } = dagreGraph.node(node.id);
+      return {
+        ...node,
+        position: {
+          x: x - nodeWidth / 2,
+          y: y - nodeHeight / 2,
+        },
+      };
+    });
+
+    setNodes(positionedNodes);
+    setEdges(createdEdges);
   }, [schema, layout, spacing]);
 
   return (
     <div className="w-full h-full">
       <ReactFlowProvider>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          fitView
-          style={{ background: "#121212" }}
-        >
+        <ReactFlow nodes={nodes} edges={edges} fitView>
           <MiniMap />
           <Controls />
           <Background />
